@@ -22,7 +22,7 @@ namespace test.Controllers
         {
             using var cmd = _dbCommand.CreateStoredProcedureCommand("usp_Read_ACPD");
             await cmd.Connection.OpenAsync();
-
+         
             using var reader = await cmd.ExecuteReaderAsync();
             var result = new StringBuilder();
 
@@ -49,6 +49,7 @@ namespace test.Controllers
         [HttpPut("update")]
         public async Task<IActionResult> Update([FromBody] Myoffice_ACPD model)
         {
+
             using var cmd = _dbCommand.CreateStoredProcedureCommand("usp_Update_ACPD");
             cmd.Parameters.AddWithValue("@JsonData", JsonSerializer.Serialize(model));
 
@@ -58,17 +59,17 @@ namespace test.Controllers
             return Ok(new { success = true, message = "Update success", data = model });
         }
 
-        [HttpDelete("delete/{id}")]
-        public async Task<IActionResult> Delete(int id)
+        [HttpDelete("delete/{ACPD_SID}")]
+        public async Task<IActionResult> Delete(string ACPD_SID)
         {
             using var cmd = _dbCommand.CreateStoredProcedureCommand("usp_Delete_ACPD");
-            var json = JsonSerializer.Serialize(new { ID = id });
+            var json = JsonSerializer.Serialize(new { ACPD_SID = ACPD_SID });
             cmd.Parameters.AddWithValue("@JsonData", json);
 
             await cmd.Connection.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
 
-            return Ok(new { success = true, message = $"Delete success (ID = {id})" });
+            return Ok(new { success = true, message = $"Delete success (ACPD_SID = {ACPD_SID})" });
         }
     }
 }
