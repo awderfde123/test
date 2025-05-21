@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using System.Data;
 using System.Text;
 using System.Text.Json;
 using test.Models;
@@ -11,46 +10,23 @@ namespace test.Controllers
     [Route("api/[controller]")]
     public class Myoffice_ACPDController : ControllerBase
     {
-        private readonly IConfiguration _config;
+        private readonly DbCommand _dbCommand;
 
-        public Myoffice_ACPDController(IConfiguration config)
+        public Myoffice_ACPDController(DbCommand dbCommand)
         {
-            _config = config;
-        }
-
-        [HttpPost("create")]
-        public async Task<IActionResult> Create([FromBody] Myoffice_ACPD model)
-        {
-            var connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
-            using var cmd = new SqlCommand("usp_Create_ACPD", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            cmd.Parameters.AddWithValue("@JsonData", JsonSerializer.Serialize(model));
-
-            await conn.OpenAsync();
-            await cmd.ExecuteNonQueryAsync();
-
-            return Ok(new
-            {
-                success = true,
-                message = "Create success",
-                data = model
-            });
+            _dbCommand = dbCommand;
         }
 
         [HttpGet("read")]
         public async Task<IActionResult> Read()
         {
-            var connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
-            using var cmd = new SqlCommand("usp_Read_ACPD", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
+            using var cmd = _dbCommand.CreateStoredProcedureCommand("usp_Read_ACPD");
+            await cmd.Connection.OpenAsync();
 
-            await conn.OpenAsync();
             using var reader = await cmd.ExecuteReaderAsync();
-
             var result = new StringBuilder();
-            while (reader.Read())
+
+            while (await reader.ReadAsync())
             {
                 result.Append(reader.GetString(0));
             }
@@ -58,44 +34,41 @@ namespace test.Controllers
             return Content(result.ToString(), "application/json");
         }
 
+        [HttpPost("create")]
+        public async Task<IActionResult> Create([FromBody] Myoffice_ACPD model)
+        {
+            using var cmd = _dbCommand.CreateStoredProcedureCommand("usp_Create_ACPD");
+            cmd.Parameters.AddWithValue("@JsonData", JsonSerializer.Serialize(model));
+
+            await cmd.Connection.OpenAsync();
+            await cmd.ExecuteNonQueryAsync();
+
+            return Ok(new { success = true, message = "Create success", data = model });
+        }
+
         [HttpPut("update")]
         public async Task<IActionResult> Update([FromBody] Myoffice_ACPD model)
         {
-            var connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
-            using var cmd = new SqlCommand("usp_Update_ACPD", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
+            using var cmd = _dbCommand.CreateStoredProcedureCommand("usp_Update_ACPD");
             cmd.Parameters.AddWithValue("@JsonData", JsonSerializer.Serialize(model));
 
-            await conn.OpenAsync();
+            await cmd.Connection.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
 
-            return Ok(new
-            {
-                success = true,
-                message = "Update success",
-                data = model
-            });
+            return Ok(new { success = true, message = "Update success", data = model });
         }
 
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            using var cmd = _dbCommand.CreateStoredProcedureCommand("usp_Delete_ACPD");
             var json = JsonSerializer.Serialize(new { ID = id });
-            var connStr = _config.GetConnectionString("DefaultConnection");
-            using var conn = new SqlConnection(connStr);
-            using var cmd = new SqlCommand("usp_Delete_ACPD", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
             cmd.Parameters.AddWithValue("@JsonData", json);
 
-            await conn.OpenAsync();
+            await cmd.Connection.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
 
-            return Ok(new
-            {
-                success = true,
-                message = $"Delete success (ID = {id})"
-            });
+            return Ok(new { success = true, message = $"Delete success (ID = {id})" });
         }
     }
 }
